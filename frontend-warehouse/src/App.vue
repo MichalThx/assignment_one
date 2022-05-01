@@ -1,6 +1,6 @@
 <template>
   <h1> Warehouse Management System</h1>
-  <div class="table" > 
+  <div class="table" >
     <div class="item">
       <h3> Items</h3>
       <h3> Stock </h3>
@@ -9,18 +9,18 @@
     <div v-for="(item, pos) in items" :key="item.name" class = "item">
       <div>{{item.name}}</div>
       <div> {{ item.stock }} </div>
-      <div> 
+      <div>
         <button v-on:click="buy(pos, 1)"> + </button>
         <b>{{ item.quantity }} </b>
         <button v-on:click="buy(pos, 0)"> - </button>
       </div>
     </div>
-    <button class="buy" v-on:click="confirm()"> 
+    <button class="buy" v-on:click="confirm()">
     Buy Items
     </button>
   </div>
   <h2>Files</h2>
-  <div class="table"> 
+  <div class="table">
     <div class="file">
       <label> Upload Products </label>
       <input type="file" @change="handleFileUpload($event)"/>
@@ -41,101 +41,97 @@
 export default {
   name: 'App',
 
-  data() {
+  data () {
     return {
       items: [],
       file: '',
       warning: '',
-      status: false,
+      status: false
     }
   },
-  mounted() {
-    this.getList();
-
+  mounted () {
+    this.getList()
   },
   methods: {
-    getList() {
-      var inner = this;
-      this.axios.get("http://localhost:8080/warehouse/list").then((response) => {
-        console.log(response.data);
+    getList () {
+      const inner = this
+      this.axios.get('http://localhost:8080/warehouse/list').then((response) => {
+        console.log(response.data)
         response.data.forEach(x => {
-          inner.items.push({name: x.name, stock: x.stock, quantity: 0});
-        });
-        
-        
-      })
-    },
-    buy(position, direction){
-      let it = this.items[position];
-      if(direction > 0){
-        if(it.stock > it.quantity){
-          it.quantity += 1;
-        }  
-      }else{
-        if(it.quantity > 0){
-          it.quantity -= 1;
-        }
-      }
-    },
-    confirm(){
-      let context = this;
-      let bought = [];
-      let indexes = [];
-      let i = 0;
-      for(let it of this.items){
-        if(it.quantity > 0){
-          bought.push(it);
-          indexes.push(i);
-        }
-        i += 1;
-      }
-      this.axios.post('http://localhost:8080/warehouse/sell', 
-        {data: JSON.stringify(bought)}, {headers: {'Content-Type': 'multipart/form-data'}})
-      .then(function (response) {
-        let j = 0;
-        response.data.forEach(x => {
-          context.items[indexes[j]]["stock"] = x.stock;
-          context.items[indexes[j]]["quantity"] = 0;
-          j++;
-        });
-      })
-      .catch(function (error) {
-        console.log(error);
-      });
-    },
-        handleFileUpload(event){
-        this.file = event.target.files[0];
-        event.target.reset();
-      },
-      
-      submitFile(items){
-        let formData = new FormData();
-        let context = this;
-        formData.append('file', this.file);
-        let url = "";
-        if(items){
-          url = "http://localhost:8080/warehouse/products";
-        }else{
-          url = "http://localhost:8080/warehouse/inventory";
-        }
-        this.axios.post( url,
-          formData,
-          {headers: {'Content-Type': 'multipart/form-data'}}
-        ).then(function(){
-          context.warningChange("Uploaded Successfully", context);         
+          inner.items.push({ name: x.name, stock: x.stock, quantity: 0 })
         })
-        .catch(function(){
-          context.warningChange("Failed to upload", context);
-        });
-      },
-      warningChange(text, context){
-        context.warning = text;
-        context.status = true;
-        context.file = '';
-        
-        setTimeout(() => context.status = false, 2000);
-
+      })
+    },
+    buy (position, direction) {
+      const it = this.items[position]
+      if (direction > 0) {
+        if (it.stock > it.quantity) {
+          it.quantity += 1
+        }
+      } else {
+        if (it.quantity > 0) {
+          it.quantity -= 1
+        }
       }
+    },
+    confirm () {
+      const context = this
+      const bought = []
+      const indexes = []
+      let i = 0
+      for (const it of this.items) {
+        if (it.quantity > 0) {
+          bought.push(it)
+          indexes.push(i)
+        }
+        i += 1
+      }
+      this.axios.post('http://localhost:8080/warehouse/sell',
+        { data: JSON.stringify(bought) }, { headers: { 'Content-Type': 'multipart/form-data' } })
+        .then(function (response) {
+          let j = 0
+          response.data.forEach(x => {
+            context.items[indexes[j]].stock = x.stock
+            context.items[indexes[j]].quantity = 0
+            j++
+          })
+        })
+        .catch(function (error) {
+          console.log(error)
+        })
+    },
+    handleFileUpload (event) {
+      this.file = event.target.files[0]
+    },
+
+    submitFile (items) {
+      const formData = new FormData()
+      const context = this
+      formData.append('file', this.file)
+      let url = ''
+      if (items) {
+        url = 'http://localhost:8080/warehouse/products'
+      } else {
+        url = 'http://localhost:8080/warehouse/inventory'
+      }
+      this.axios.post(url,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      ).then(function () {
+        context.warningChange('Uploaded Successfully', context)
+      })
+        .catch(function () {
+          context.warningChange('Failed to upload', context)
+        })
+    },
+    warningChange (text, context) {
+      context.warning = text
+      context.status = true
+      context.file = ''
+
+      // eslint-disable-next-line
+      setTimeout(() => context.status = false, 2000)
+    }
   }
 
 }
@@ -188,7 +184,7 @@ button, input[type="submit"], input[type="reset"] {
 .buy{
   border: 1px solid black;
   border-bottom: none;
-  font-weight: bold; 
+  font-weight: bold;
   font-size: 3vw;
   margin: auto;
   display: block;

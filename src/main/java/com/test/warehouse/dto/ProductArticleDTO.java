@@ -4,9 +4,6 @@ package com.test.warehouse.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
-import java.util.ArrayList;
-import java.util.List;
-
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
