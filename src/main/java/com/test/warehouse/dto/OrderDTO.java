@@ -12,5 +12,6 @@ import lombok.Setter;
 public class OrderDTO {
 
 	String name;
+	String stock;
 	String quantity;
 }

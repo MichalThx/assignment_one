@@ -10,5 +10,5 @@ import lombok.*;
 public class ItemsDTO {
 
 	private String name;
-	private Integer quantity;
+	private Integer stock;
 }

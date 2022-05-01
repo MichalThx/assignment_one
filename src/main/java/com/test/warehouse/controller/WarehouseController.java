@@ -4,17 +4,15 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 
-import com.test.warehouse.dto.ItemsDTO;
-import com.test.warehouse.dto.OrderDTO;
-import com.test.warehouse.dto.ProductArticleDTO;
-import com.test.warehouse.dto.ProductWrapperDTO;
+import com.test.warehouse.dto.*;
 import com.test.warehouse.entity.ArticleEntity;
 import com.test.warehouse.entity.ProductEntity;
 import com.test.warehouse.mapper.ObjectConverter;
 import com.test.warehouse.repository.ArticleRepository;
 import com.test.warehouse.repository.ProductRepository;
-import net.bytebuddy.dynamic.NexusAccessor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -41,8 +39,8 @@ public class WarehouseController {
 	}
 
 
-	@PostMapping("/upload")
-	public ProductWrapperDTO updateProducts(@RequestPart("data") String data) throws JsonProcessingException {
+	@PostMapping("/products")
+	public ResponseEntity<String>  updateProducts(@RequestPart("file") String data) throws JsonProcessingException {
 		ProductWrapperDTO productsWrapped = null;
 		try{
 			productsWrapped = objectMapper.readValue(data, ProductWrapperDTO.class);
@@ -57,14 +55,32 @@ public class WarehouseController {
 			});
 			productRepository.saveAllAndFlush(updatedProducts);
 
-		}catch(JsonProcessingException ignored){}
+		}catch(Exception ignored){return new ResponseEntity<>(HttpStatus.BAD_REQUEST);}
 
-		return productsWrapped;
+		return new ResponseEntity<>(HttpStatus.OK);
+
+	}
+
+	@PostMapping("/inventory")
+	public ResponseEntity<String> updateInventory(@RequestPart("file") String data) throws JsonProcessingException {
+		InventoryDTO inventoryDTO = null;
+		try{
+			inventoryDTO = objectMapper.readValue(data, InventoryDTO.class);
+			List<ArticleEntity> updatedArticles = new ArrayList<>();
+			inventoryDTO.getInventory().forEach(a -> {
+				updatedArticles.add(objectConverter.toEntity(a));
+
+			});
+			articleRepository.saveAllAndFlush(updatedArticles);
+
+		}catch(Exception ignored){return new ResponseEntity<>(HttpStatus.BAD_REQUEST);}
+
+		return new ResponseEntity<>(HttpStatus.OK);
 
 	}
 
 	@GetMapping("/list")
-	public List getAllProducts() throws IOException {
+	public ResponseEntity<List<ItemsDTO>> getAllProducts() throws IOException {
 
 		List<ProductEntity> products = productRepository.findAll();
 		HashMap<Integer, Integer> inventoryMap = new HashMap<>();
@@ -73,7 +89,6 @@ public class WarehouseController {
 		});
 
 		List<ItemsDTO> available = new ArrayList<>();
-
 
 		for(ProductEntity productEntity : products){
 
@@ -91,38 +106,41 @@ public class WarehouseController {
 			}
 			available.add(new ItemsDTO(productEntity.getName(), max));
 		}
-		return available;
+		return ResponseEntity.status(HttpStatus.OK).body(available);
 	}
 
-	@PostMapping("/sell")
-	public List sellProduct(@RequestPart("data") String data) throws JsonProcessingException {
+	@PostMapping(value = "/sell")
+	public ResponseEntity<Object> sellProduct(@RequestPart("data") String data) throws JsonProcessingException {
+		System.out.println(data);
 		try{
-			OrderDTO orderDTO = objectMapper.readValue(data, OrderDTO.class);
-			ProductEntity productEntity = productRepository.getById(orderDTO.getName());
-			ProductArticleDTO[] productArticleDTOS = objectMapper.readValue(productEntity.getContainArticles(),
-					ProductArticleDTO[].class);
-			List<ArticleEntity> updatedArticles = new ArrayList<>();
+			OrderDTO[] orderDTOS = objectMapper.readValue(data, OrderDTO[].class);
+			for(OrderDTO orderDTO : orderDTOS){
+				ProductEntity productEntity = productRepository.getById(orderDTO.getName());
+				ProductArticleDTO[] productArticleDTOS = objectMapper.readValue(productEntity.getContainArticles(),
+						ProductArticleDTO[].class);
+				List<ArticleEntity> updatedArticles = new ArrayList<>();
 
-			for(ProductArticleDTO productArticleDTO : productArticleDTOS){
-				int required = Integer.parseInt(productArticleDTO.getAmountOf()) * Integer.parseInt(orderDTO.getQuantity());
-				ArticleEntity articleEntity = articleRepository.getById(Integer.valueOf(productArticleDTO.getArtId()));
-				if(required <= articleEntity.getStock()){
-					articleEntity.setStock(articleEntity.getStock() - required);
-					updatedArticles.add(articleEntity);
-				}else{
+				for(ProductArticleDTO productArticleDTO : productArticleDTOS){
 
-					break;
+					int required = Integer.parseInt(productArticleDTO.getAmountOf()) * Integer.parseInt(orderDTO.getQuantity());
+					ArticleEntity articleEntity = articleRepository.getById(Integer.valueOf(productArticleDTO.getArtId()));
+					if(required <= articleEntity.getStock()){
+						articleEntity.setStock(articleEntity.getStock() - required);
+						updatedArticles.add(articleEntity);
+					}else{	break; }
+				}
+
+				if(updatedArticles.size() == productArticleDTOS.length){
+					articleRepository.saveAllAndFlush(updatedArticles);
+					orderDTO.setStock(String.valueOf(
+							Integer.parseInt(orderDTO.getStock()) - Integer.parseInt(orderDTO.getQuantity())));
 				}
 			}
 
-			if(updatedArticles.size() == productArticleDTOS.length){
-				articleRepository.saveAllAndFlush(updatedArticles);
-			}
-
-			return null;
+			return ResponseEntity.status(HttpStatus.OK).body(orderDTOS);
 
 		}catch (Exception e){
-			return null;
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 		}
 	}
 }
